@@ -7,11 +7,20 @@ spec:
   compositeTypeRef:
     apiVersion: aws.caas.upbound.io/v1alpha1
     kind: XCluster
-  resources:
-    - base:
-        apiVersion: aws.caas.upbound.io/v1alpha1
-        kind: XNetwork
-      patches:
+  mode: Pipeline
+  pipeline:
+  - step: patch-and-transform
+    functionRef:
+      name: function-patch-and-transform
+    input:
+      apiVersion: pt.fn.crossplane.io/v1beta1
+      kind: Resources
+      resources:
+      - name: composite-network-eks
+        base:
+          apiVersion: aws.caas.upbound.io/v1alpha1
+          kind: XNetwork
+        patches:
         - fromFieldPath: spec.parameters.id
           toFieldPath: spec.parameters.id
         - fromFieldPath: spec.parameters.region
@@ -27,14 +36,15 @@ spec:
           toFieldPath: status.subnetIds
           policy:
             fromFieldPath: Required
-      name: compositeNetworkEKS
-    - base:
-        apiVersion: aws.caas.upbound.io/v1alpha1
-        kind: XEKS
-      connectionDetails:
-        - fromConnectionSecretKey: kubeconfig
-      name: compositeClusterEKS
-      patches:
+      - name: composite-cluster-eks
+        base:
+          apiVersion: aws.caas.upbound.io/v1alpha1
+          kind: XEKS
+        connectionDetails:
+        - name: kubeconfig
+          type: FromConnectionSecretKey
+          fromConnectionSecretKey: kubeconfig
+        patches:
         - fromFieldPath: spec.parameters.id
           toFieldPath: spec.parameters.id
         - fromFieldPath: spec.parameters.region
@@ -48,9 +58,10 @@ spec:
         - fromFieldPath: metadata.uid
           toFieldPath: spec.writeConnectionSecretToRef.name
           transforms:
-            - type: string
-              string:
-                fmt: "%s-eks"
+          - type: string
+            string:
+              type: Format
+              fmt: "%s-eks"
         - fromFieldPath: spec.writeConnectionSecretToRef.namespace
           toFieldPath: spec.writeConnectionSecretToRef.namespace
         - fromFieldPath: spec.parameters.version
@@ -67,11 +78,11 @@ spec:
           toFieldPath: spec.parameters.subnetIds
           policy:
             fromFieldPath: Required
-    - base:
-        apiVersion: aws.caas.upbound.io/v1alpha1
-        kind: XServices
-      name: compositeClusterServices
-      patches:
+      - name: composite-cluster-services
+        base:
+          apiVersion: aws.caas.upbound.io/v1alpha1
+          kind: XServices
+        patches:
         - fromFieldPath: spec.parameters.deletionPolicy
           toFieldPath: spec.deletionPolicy
         - fromFieldPath: spec.parameters.id
